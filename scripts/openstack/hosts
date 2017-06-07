@@ -1,0 +1,92 @@
+[OSEv3:children]
+masters
+nodes
+etcd
+
+# Set variables common for all OSEv3 hosts
+[OSEv3:vars]
+ansible_ssh_user=cloud-user
+ansible_become=true
+
+deployment_type=openshift-enterprise
+
+# htpasswd authentication
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
+
+# apply updated node defaults
+openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
+
+#openstack cloudprovider
+openshift_cloudprovider_kind=openstack
+openshift_cloudprovider_openstack_auth_url=http://192.168.1.40:5000/v2.0/
+openshift_cloudprovider_openstack_username=openshift
+openshift_cloudprovider_openstack_password=somepassword
+openshift_cloudprovider_openstack_tenant_id=61bca84bbd5c44acbd96036d63cb6722
+openshift_cloudprovider_openstack_tenant_name=openshift
+openshift_cloudprovider_openstack_region=RegionOne
+openshift_cloudprovider_openstack_lb_subnet_id=6e2e24d8-f528-4905-9981-3eeb8d22183c
+
+# enable ntp on masters to ensure proper failover
+openshift_clock_enabled=true
+
+# Configure master API and console ports.
+openshift_master_api_port=443
+openshift_master_console_port=443
+
+# Configure OVS plugin
+os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
+
+# Configure default node selector for deployments
+osm_default_node_selector='purpose=work'
+
+# Default subdomain
+openshift_master_default_subdomain=apps.ageslab.com
+
+# Routers
+openshift_hosted_router_selector='purpose=infra'
+openshift_hosted_router_replicas=1
+
+# Registry
+openshift_hosted_registry_selector='purpose=infra'
+openshift_hosted_registry_replicas=1
+openshift_hosted_registry_storage_kind=dynamic
+openshift_hosted_registry_storage_volume_size=50Gi
+
+# Logging
+openshift_hosted_logging_deploy=true
+openshift_hosted_master_logging_public_url=https://logging.apps.ageslab.com
+openshift_hosted_logging_hostname=logging.apps.ageslab.com
+openshift_hosted_logging_enable_ops_cluster=false
+openshift_hosted_logging_elasticsearch_cluster_size=1
+openshift_hosted_logging_curator_nodeselector='purpose=infra'
+openshift_hosted_logging_elasticsearch_nodeselector='purpose=infra'
+openshift_hosted_logging_kibana_nodeselector='purpose=infra'
+openshift_hosted_logging_fluentd_nodeselector_label='region=primary'
+openshift_hosted_logging_storage_kind=dynamic
+openshift_hosted_logging_storage_volume_size=50Gi
+
+# Metrics
+openshift_hosted_metrics_deploy=true
+openshift_hosted_metrics_public_url=https://metrics.apps.ageslab.com/hawkular/metrics
+openshift_metrics_hawkular_hostname=metrics.apps.ageslab.com
+openshift_metrics_hawkular_nodeselector={"purpose":"infra"}
+openshift_metrics_cassandra_nodeselector={"purpose":"infra"}
+openshift_metrics_heapster_nodeselector={"purpose":"infra"}
+openshift_hosted_metrics_storage_kind=dynamic
+openshift_hosted_metrics_storage_volume_size=50Gi
+
+# host group for masters
+[masters]
+master1.ageslab.com
+
+# host group for etcd
+[etcd]
+master1.ageslab.com
+
+# host group for nodes, includes region info
+[nodes]
+master1.ageslab.com openshift_hostname=master1.ageslab.com openshift_public_hostname=openshift.ageslab.com openshift_schedulable=false openshift_node_labels="{'region':'primary'}"
+infranode1.ageslab.com openshift_hostname=infranode1.ageslab.com openshift_node_labels="{'region':'primary','purpose':'infra'}"
+appnode1.ageslab.com openshift_hostname=appnode1.ageslab.com openshift_node_labels="{'region':'primary','purpose':'work','target':'dev1'}"
+appnode2.ageslab.com openshift_hostname=appnode2.ageslab.com openshift_node_labels="{'region':'primary','purpose':'work','target':'dev2'}"
+appnode3.ageslab.com openshift_hostname=appnode3.ageslab.com openshift_node_labels="{'region':'primary','purpose':'work','target':'dev3'}"
