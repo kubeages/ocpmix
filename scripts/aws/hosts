@@ -51,10 +51,21 @@ openshift_hosted_router_replicas=1
 # Registry will only be created if nodes matching this label are present.
 openshift_hosted_registry_selector='purpose=infra'
 openshift_hosted_registry_replicas=1
-openshift_hosted_registry_storage_kind=dynamic
+openshift_hosted_registry_storage_kind=object
+openshift_hosted_registry_storage_provider=s3
+openshift_hosted_registry_storage_s3_accesskey=YOUR_ACCESS_KEY
+openshift_hosted_registry_storage_s3_secretkey=YOUR_SECRET_KEY
+openshift_hosted_registry_storage_s3_bucket=registry-ageszone
+openshift_hosted_registry_storage_s3_region=us-east-1
+openshift_hosted_registry_storage_s3_chunksize=26214400
+openshift_hosted_registry_storage_s3_rootdirectory=/registry
+openshift_hosted_registry_pullthrough=true
+openshift_hosted_registry_acceptschema2=true
+openshift_hosted_registry_enforcequota=true
 
 # Logging
 openshift_master_logging_public_url=https://logging.apps.ageszone.com
+openshift_hosted_logging_hostname=logging.apps.ageszone.com
 openshift_hosted_logging_storage_kind=dynamic
 openshift_hosted_logging_deploy=true
 openshift_hosted_logging_hostname=logging.apps.ageszone.com
@@ -63,12 +74,18 @@ openshift_hosted_logging_elasticsearch_nodeselector='purpose=infra'
 openshift_hosted_logging_fluentd_nodeselector='region=primary'
 openshift_hosted_logging_kibana_nodeselector='purpose=infra'
 openshift_hosted_logging_curator_nodeselector='purpose=infra'
+openshift_hosted_logging_storage_volume_size=10Gi
 
 # Metrics
 openshift_hosted_metrics_public_url=https://metrics.apps.ageszone.com/hawkular/metrics
 openshift_hosted_metrics_deploy=true
 openshift_hosted_metrics_storage_kind=dynamic
 openshift_hosted_metrics_selector='purpose=infra'
+openshift_metrics_hawkular_hostname=metrics.apps.ageszone.com
+openshift_metrics_hawkular_nodeselector={"purpose":"infra"}
+openshift_metrics_cassandra_nodeselector={"purpose":"infra"}
+openshift_metrics_heapster_nodeselector={"purpose":"infra"}
+openshift_hosted_metrics_storage_volume_size=10Gi
 
 # host group for masters
 [masters]
