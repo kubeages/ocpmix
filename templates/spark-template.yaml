@@ -1,0 +1,374 @@
+kind: Template
+apiVersion: v1
+metadata:
+  annotations:
+    description: Spark template for OpenShift Container Platform
+    iconClass: "fa fa-star-o"
+  name: spark
+objects:
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${SPARK_MASTER}
+    name: ${SPARK_MASTER}
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: gcr.io/google_containers/spark:1.5.2_v1
+      referencePolicy:
+        type: Source
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${SPARK_UI_PROXY}
+    name: ${SPARK_UI_PROXY}
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: elsonrodriguez/spark-ui-proxy:1.0
+      referencePolicy:
+        type: Source
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${ZEPPELIN}
+    name: ${ZEPPELIN}
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: gcr.io/google_containers/zeppelin:v0.5.6_v1
+      referencePolicy:
+        type: Source                 
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${SPARK_MASTER}
+    name: ${SPARK_MASTER}
+  spec:
+    replicas: 1
+    selector:
+      app: ${SPARK_MASTER}
+      deploymentconfig: ${SPARK_MASTER}    
+    strategy:
+      activeDeadlineSeconds: 21600
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${SPARK_MASTER}
+          deploymentconfig: ${SPARK_MASTER}
+      spec:
+        containers:
+        - name: ${SPARK_MASTER}
+          imagePullPolicy: Always
+          image: ${SPARK_MASTER}:latest
+          command: ["/start-master"]
+          ports:
+            - containerPort: 7077
+              protocol: TCP
+            - containerPort: 8080
+              protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          resources:
+            requests:
+              cpu: 100m          
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30              
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${SPARK_MASTER}
+        from:
+          kind: ImageStreamTag
+          name: ${SPARK_MASTER}:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${SPARK_MASTER}
+    name: ${SPARK_MASTER}
+  spec:
+    ports:
+    - name: spark
+      port: 7077
+      protocol: TCP
+      targetPort: 7077
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: ${SPARK_MASTER}
+      deploymentconfig: ${SPARK_MASTER}
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${SPARK_UI_PROXY}
+    name: ${SPARK_UI_PROXY}
+  spec:
+    replicas: 1
+    selector:
+      app: ${SPARK_UI_PROXY}
+      deploymentconfig: ${SPARK_UI_PROXY}    
+    strategy:
+      activeDeadlineSeconds: 21600
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${SPARK_UI_PROXY}
+          deploymentconfig: ${SPARK_UI_PROXY}
+      spec:
+        containers:
+        - name: ${SPARK_UI_PROXY}
+          imagePullPolicy: Always
+          image: ${SPARK_UI_PROXY}:latest
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+          args:
+            - ${SPARK_MASTER}:8080
+          livenessProbe:
+              httpGet:
+                path: /
+                port: 80
+              initialDelaySeconds: 120
+              timeoutSeconds: 5              
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30              
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${SPARK_UI_PROXY}
+        from:
+          kind: ImageStreamTag
+          name: ${SPARK_UI_PROXY}:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${SPARK_UI_PROXY}
+    name: ${SPARK_UI_PROXY}
+  spec:
+    ports:
+    - name: ${SPARK_UI_PROXY}
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: ${SPARK_UI_PROXY}
+      deploymentconfig: ${SPARK_UI_PROXY}
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: ${SPARK_UI_PROXY}
+  spec:
+    host: 
+    port:
+      targetPort: ${SPARK_UI_PROXY}
+    to:
+      kind: Service
+      name: ${SPARK_UI_PROXY}
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${SPARK_WORKER}
+    name: ${SPARK_WORKER}
+  spec:
+    replicas: ${SPARK_WORKER_REPLICAS}
+    selector:
+      app: ${SPARK_WORKER}
+      deploymentconfig: ${SPARK_WORKER}    
+    strategy:
+      activeDeadlineSeconds: 21600
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${SPARK_WORKER}
+          deploymentconfig: ${SPARK_WORKER}
+      spec:
+        containers:
+        - name: ${SPARK_WORKER}
+          imagePullPolicy: Always
+          image: ${SPARK_MASTER}:latest
+          ports:
+            - containerPort: 8081
+              protocol: TCP
+          command: ["/start-worker"]              
+          resources:
+            requests:
+              cpu: 100m
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30              
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${SPARK_WORKER}
+        from:
+          kind: ImageStreamTag
+          name: ${SPARK_MASTER}:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${ZEPPELIN}
+    name: ${ZEPPELIN}
+  spec:
+    replicas: 1
+    selector:
+      app: ${ZEPPELIN}
+      deploymentconfig: ${ZEPPELIN}    
+    strategy:
+      activeDeadlineSeconds: 21600
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${ZEPPELIN}
+          deploymentconfig: ${ZEPPELIN}
+      spec:
+        containers:
+        - name: ${ZEPPELIN}
+          imagePullPolicy: Always
+          image: ${ZEPPELIN}:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+          terminationMessagePath: /dev/termination-log
+          livenessProbe:
+              httpGet:
+                path: /
+                port: 8080
+              initialDelaySeconds: 120
+              timeoutSeconds: 5             
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30              
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${ZEPPELIN}
+        from:
+          kind: ImageStreamTag
+          name: ${ZEPPELIN}:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${ZEPPELIN}
+    name: ${ZEPPELIN}
+  spec:
+    ports:
+    - name: ${ZEPPELIN}
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: ${ZEPPELIN}
+      deploymentconfig: ${ZEPPELIN}
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: ${ZEPPELIN}
+  spec:
+    host: 
+    port:
+      targetPort: ${ZEPPELIN}
+    to:
+      kind: Service
+      name: ${ZEPPELIN}
+      weight: 100
+    wildcardPolicy: None                
+parameters:
+- description: Name for Spark master.
+  name: SPARK_MASTER
+  required: true
+  value: spark-master
+- description: Name for Spark UI Proxy.
+  name: SPARK_UI_PROXY
+  required: true
+  value: spark-ui-proxy
+- description: Name for Spark Worker.
+  name: SPARK_WORKER
+  required: true
+  value: spark-worker
+- description: Number of Spark Workers.
+  name: SPARK_WORKER_REPLICAS
+  required: true
+  value: "3"  
+- description: Name for Zeppelin.
+  name: ZEPPELIN
+  required: true
+  value: zeppelin        
