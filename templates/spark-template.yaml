@@ -219,7 +219,7 @@ objects:
       app: ${SPARK_WORKER}
     name: ${SPARK_WORKER}
   spec:
-    replicas: ${SPARK_WORKER_REPLICAS}
+    replicas: 1
     selector:
       app: ${SPARK_WORKER}
       deploymentconfig: ${SPARK_WORKER}    
@@ -264,6 +264,21 @@ objects:
           kind: ImageStreamTag
           name: ${SPARK_MASTER}:latest
       type: ImageChange
+- apiVersion: autoscaling/v1
+  kind: HorizontalPodAutoscaler
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: ${SPARK_WORKER}
+    name: ${SPARK_WORKER}
+  spec:
+    maxReplicas: ${SPARK_WORKER_REPLICAS}
+    minReplicas: 1
+    scaleTargetRef:
+      apiVersion: extensions/v1beta1
+      kind: DeploymentConfig
+      name: ${SPARK_WORKER}
+    targetCPUUtilizationPercentage: ${SPARK_WORKER_REPLICAS_TRIGGER}
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
@@ -364,10 +379,14 @@ parameters:
   name: SPARK_WORKER
   required: true
   value: spark-worker
-- description: Number of Spark Workers.
+- description: Maximum number of Spark Workers.
   name: SPARK_WORKER_REPLICAS
   required: true
-  value: "3"  
+  value: "10"
+- description: Autoscaler CPU trigger for Spark Workers.
+  name: SPARK_WORKER_REPLICAS_TRIGGER
+  required: true
+  value: "80"   
 - description: Name for Zeppelin.
   name: ZEPPELIN
   required: true
