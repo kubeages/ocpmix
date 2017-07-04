@@ -241,8 +241,6 @@ objects:
   apiVersion: v1
   metadata:
     name: gogs-data
-    annotations:
-      volume.beta.kubernetes.io/storage-class: nfs-agesnas
   spec:
     accessModes:
       - ReadWriteOnce
@@ -253,8 +251,6 @@ objects:
   apiVersion: v1
   metadata:
     name: gogs-postgres-data
-    annotations:
-      volume.beta.kubernetes.io/storage-class: nfs-agesnas    
   spec:
     accessModes:
       - ReadWriteOnce
