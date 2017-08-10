@@ -2,7 +2,7 @@ kind: Template
 apiVersion: v1
 metadata:
   annotations:
-    description: HDFS-Spark template for OpenShift Container Platform. It includes HDFS, Spark, Zeppelin and Jupyter apps.
+    description: HDFS-Spark template for OpenShift Container Platform. It includes a HDFS cluster, a Spark autoscalable cluster and Zeppelin apps.
     iconClass: "fa fa-star-o"
   name: spark
 objects:
@@ -10,48 +10,6 @@ objects:
   apiVersion: v1
   metadata:
     name: hadoop
-- kind: ImageStream
-  apiVersion: v1
-  metadata:
-    labels:
-      app: ${SPARK_MASTER}
-    name: ${SPARK_MASTER}
-  spec:
-    tags:
-    - name: latest
-      from:
-        kind: DockerImage
-        name: radanalyticsio/openshift-spark
-      referencePolicy:
-        type: Source
-- kind: ImageStream
-  apiVersion: v1
-  metadata:
-    labels:
-      app: ${ZEPPELIN}
-    name: ${ZEPPELIN}
-  spec:
-    tags:
-    - name: latest
-      from:
-        kind: DockerImage
-        name: gcr.io/google_containers/zeppelin:v0.5.6_v1
-      referencePolicy:
-        type: Source
-- kind: ImageStream
-  apiVersion: v1
-  metadata:
-    labels:
-      app: ${JUPYTER}
-    name: ${JUPYTER}
-  spec:
-    tags:
-    - name: latest
-      from:
-        kind: DockerImage
-        name: tmckay/pyspark-hdfs-notebook:latest
-      referencePolicy:
-        type: Source        
 #HDFS-namenode section
 - kind: StatefulSet
   apiVersion: apps/v1beta1
@@ -81,8 +39,6 @@ objects:
               - name: HDFS_CONF_dfs_webhdfs_enabled
                 value: "true"                                  
             ports:
-            - containerPort: 8000
-              name: hfx            
             - containerPort: 8020
               name: fs
             - containerPort: 50070
@@ -108,8 +64,6 @@ objects:
       app: ${HDFS}-namenode
   spec:
     ports:
-    - port: 8000
-      name: hfx
     - port: 8020
       name: fs
     - port: 50070
@@ -130,19 +84,6 @@ objects:
       name: ${HDFS}-namenode
       weight: 100
     wildcardPolicy: None
-- apiVersion: v1
-  kind: Route
-  metadata:
-    name: ${HDFS}-namenode-hfx
-  spec:
-    host: ${HDFS}-namenode-hfx
-    port:
-      targetPort: 8000
-    to:
-      kind: Service
-      name: ${HDFS}-namenode
-      weight: 100
-    wildcardPolicy: None    
 #HDFS-datanode section
 - kind: StatefulSet
   apiVersion: apps/v1beta1
@@ -194,17 +135,45 @@ objects:
     selector:
       app: ${HDFS}-datanode            
 #SPARK section
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${SPARK_MASTER}
+    name: ${SPARK_MASTER}
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: gcr.io/google_containers/spark:1.5.2_v1
+      referencePolicy:
+        type: Source
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${SPARK_UI_PROXY}
+    name: ${SPARK_UI_PROXY}
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: elsonrodriguez/spark-ui-proxy:1.0
+      referencePolicy:
+        type: Source
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
     labels:
-      oshinko-cluster: ${SPARK_MASTER}
-      oshinko-type: master
+      app: ${SPARK_MASTER}
     name: ${SPARK_MASTER}
   spec:
     replicas: 1
     selector:
-      oshinko-cluster: ${SPARK_MASTER}
+      app: ${SPARK_MASTER}
+      deploymentconfig: ${SPARK_MASTER}    
     strategy:
       activeDeadlineSeconds: 21600
       rollingParams:
@@ -217,35 +186,25 @@ objects:
     template:
       metadata:
         labels:
-          oshinko-cluster: ${SPARK_MASTER}
-          oshinko-type: master
+          app: ${SPARK_MASTER}
+          deploymentconfig: ${SPARK_MASTER}
       spec:
         containers:
         - name: ${SPARK_MASTER}
-          env:
-          - name: OSHINKO_SPARK_CLUSTER
-            value: ${SPARK_MASTER}
-          - name: OSHINKO_REST_HOST
-          - name: OSHINKO_REST_PORT            
           imagePullPolicy: Always
           image: ${SPARK_MASTER}:latest
+          command: ["/start-master"]
           ports:
-            - containerPort: "7077"
-              name: spark-master
+            - containerPort: 7077
               protocol: TCP
-            - containerPort: "8080"
-              name: spark-webui
+            - containerPort: 8080
               protocol: TCP
-          livenessProbe:
-              httpGet:
-                path: /
-                port: 8080
-              initialDelaySeconds: 120
-              timeoutSeconds: 5             
           terminationMessagePath: /dev/termination-log
+          resources:
+            requests:
+              cpu: 100m          
         dnsPolicy: ClusterFirst
         restartPolicy: Always
-        serviceAccount: hadoop        
         securityContext: {}
         terminationGracePeriodSeconds: 30              
     triggers:
@@ -262,58 +221,34 @@ objects:
   kind: Service
   metadata:
     labels:
-      oshinko-cluster: ${SPARK_MASTER}
-      oshinko-type: master
+      app: ${SPARK_MASTER}
     name: ${SPARK_MASTER}
   spec:
     ports:
-    - port: 7077
+    - name: spark
+      port: 7077
       protocol: TCP
       targetPort: 7077
-    selector:
-      oshinko-type: master
-    sessionAffinity: None
-    type: ClusterIP
-- apiVersion: v1
-  kind: Service
-  metadata:
-    labels:
-      oshinko-cluster: ${SPARK_MASTER}
-      oshinko-type: webui
-    name: ${SPARK_MASTER}-ui
-  spec:
-    ports:
-    - port: 8080
+    - name: http
+      port: 8080
       protocol: TCP
       targetPort: 8080
     selector:
-      oshinko-type: master
+      app: ${SPARK_MASTER}
+      deploymentconfig: ${SPARK_MASTER}
     sessionAffinity: None
     type: ClusterIP
-- apiVersion: v1
-  kind: Route
-  metadata:
-    name: ${SPARK_MASTER}-ui-route
-    oshinko-cluster: ${SPARK_MASTER}
-    oshinko-type: webui    
-  spec:
-    host: 
-    to:
-      kind: Service
-      name: ${SPARK_MASTER}-ui
-      weight: 100
-    wildcardPolicy: None
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
     labels:
-      oshinko-cluster: ${SPARK_MASTER}
-      oshinko-type: worker
-    name: ${SPARK_WORKER}
+      app: ${SPARK_UI_PROXY}
+    name: ${SPARK_UI_PROXY}
   spec:
     replicas: 1
     selector:
-      oshinko-cluster: ${SPARK_MASTER}  
+      app: ${SPARK_UI_PROXY}
+      deploymentconfig: ${SPARK_UI_PROXY}    
     strategy:
       activeDeadlineSeconds: 21600
       rollingParams:
@@ -326,41 +261,112 @@ objects:
     template:
       metadata:
         labels:
-          oshinko-cluster: ${SPARK_MASTER}
-          oshinko-type: worker
+          app: ${SPARK_UI_PROXY}
+          deploymentconfig: ${SPARK_UI_PROXY}
+      spec:
+        containers:
+        - name: ${SPARK_UI_PROXY}
+          imagePullPolicy: Always
+          image: ${SPARK_UI_PROXY}:latest
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+          args:
+            - ${SPARK_MASTER}:8080
+          livenessProbe:
+              httpGet:
+                path: /
+                port: 80
+              initialDelaySeconds: 120
+              timeoutSeconds: 5              
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30              
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${SPARK_UI_PROXY}
+        from:
+          kind: ImageStreamTag
+          name: ${SPARK_UI_PROXY}:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: ${SPARK_UI_PROXY}
+    name: ${SPARK_UI_PROXY}
+  spec:
+    ports:
+    - name: ${SPARK_UI_PROXY}
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: ${SPARK_UI_PROXY}
+      deploymentconfig: ${SPARK_UI_PROXY}
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: ${SPARK_UI_PROXY}
+  spec:
+    host: 
+    port:
+      targetPort: ${SPARK_UI_PROXY}
+    to:
+      kind: Service
+      name: ${SPARK_UI_PROXY}
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${SPARK_WORKER}
+    name: ${SPARK_WORKER}
+  spec:
+    replicas: 1
+    selector:
+      app: ${SPARK_WORKER}
+      deploymentconfig: ${SPARK_WORKER}    
+    strategy:
+      activeDeadlineSeconds: 21600
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: ${SPARK_WORKER}
+          deploymentconfig: ${SPARK_WORKER}
       spec:
         containers:
         - name: ${SPARK_WORKER}
-          env:
-            - name: OSHINKO_SPARK_CLUSTER
-              value: ${SPARK_MASTER}
-            - name: OSHINKO_REST_HOST
-            - name: OSHINKO_REST_PORT              
-            - name: SPARK_MASTER_ADDRESS
-              value: spark://${SPARK_MASTER}:7077
-            - name: SPARK_MASTER_UI_ADDRESS
-              value: http://${SPARK_MASTER}-ui:8080
           imagePullPolicy: Always
           image: ${SPARK_MASTER}:latest
           ports:
             - containerPort: 8081
               protocol: TCP
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /
-              port: 8081
-              scheme: HTTP
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
+          command: ["/start-worker"]              
           resources:
             requests:
               cpu: 100m
           terminationMessagePath: /dev/termination-log
         dnsPolicy: ClusterFirst
         restartPolicy: Always
-        serviceAccount: hadoop        
         securityContext: {}
         terminationGracePeriodSeconds: 30              
     triggers:
@@ -378,8 +384,7 @@ objects:
   metadata:
     creationTimestamp: null
     labels:
-      oshinko-cluster: ${SPARK_MASTER}
-      oshinko-type: worker
+      app: ${SPARK_WORKER}
     name: ${SPARK_WORKER}
   spec:
     maxReplicas: ${SPARK_WORKER_REPLICAS}
@@ -390,6 +395,20 @@ objects:
       name: ${SPARK_WORKER}
     targetCPUUtilizationPercentage: ${SPARK_WORKER_REPLICAS_TRIGGER}
 #ZEPPELIN section
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${ZEPPELIN}
+    name: ${ZEPPELIN}
+  spec:
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: gcr.io/google_containers/zeppelin:v0.5.6_v1
+      referencePolicy:
+        type: Source
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
@@ -477,93 +496,8 @@ objects:
       kind: Service
       name: ${ZEPPELIN}
       weight: 100
-    wildcardPolicy: None
-#JUPYTER section
-- apiVersion: v1
-  kind: DeploymentConfig
-  metadata:
-    labels:
-      app: ${JUPYTER}
-    name: ${JUPYTER}
-  spec:
-    replicas: 1
-    selector:
-      app: ${JUPYTER}
-      deploymentconfig: ${JUPYTER}    
-    strategy:
-      activeDeadlineSeconds: 21600
-      rollingParams:
-        intervalSeconds: 1
-        maxSurge: 25%
-        maxUnavailable: 25%
-        timeoutSeconds: 600
-        updatePeriodSeconds: 1
-      type: Rolling
-    template:
-      metadata:
-        labels:
-          app: ${JUPYTER}
-          deploymentconfig: ${JUPYTER}
-      spec:
-        containers:
-        - name: ${JUPYTER}
-          imagePullPolicy: Always
-          image: ${JUPYTER}:latest
-          ports:
-            - containerPort: 8888
-              protocol: TCP
-          terminationMessagePath: /dev/termination-log
-          livenessProbe:
-              httpGet:
-                path: /
-                port: 8888
-              initialDelaySeconds: 120
-              timeoutSeconds: 5             
-        dnsPolicy: ClusterFirst
-        restartPolicy: Always
-        serviceAccount: hadoop
-        securityContext: {}
-        terminationGracePeriodSeconds: 30              
-    triggers:
-    - type: ConfigChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - ${JUPYTER}
-        from:
-          kind: ImageStreamTag
-          name: ${JUPYTER}:latest
-      type: ImageChange
-- apiVersion: v1
-  kind: Service
-  metadata:
-    labels:
-      app: ${JUPYTER}
-    name: ${JUPYTER}
-  spec:
-    ports:
-    - name: ${JUPYTER}
-      port: 80
-      protocol: TCP
-      targetPort: 8888
-    selector:
-      app: ${JUPYTER}
-      deploymentconfig: ${JUPYTER}
-    sessionAffinity: None
-    type: ClusterIP
-- apiVersion: v1
-  kind: Route
-  metadata:
-    name: ${JUPYTER}
-  spec:
-    host: 
-    port:
-      targetPort: ${JUPYTER}
-    to:
-      kind: Service
-      name: ${JUPYTER}
-      weight: 100
-    wildcardPolicy: None                          
+    wildcardPolicy: None                        
+#Parms section
 parameters:
 - description: Name of this project.
   name: NAMESPACE
@@ -572,11 +506,11 @@ parameters:
 - description: Name for Spark master.
   name: SPARK_MASTER
   required: true
-  value: sparkmaster
+  value: spark-master
 - description: Name for Spark Worker.
   name: SPARK_WORKER
   required: true
-  value: sparkworker
+  value: spark-worker
 - description: Maximum number of Spark Workers.
   name: SPARK_WORKER_REPLICAS
   required: true
@@ -584,15 +518,15 @@ parameters:
 - description: Autoscaler CPU trigger for Spark Workers.
   name: SPARK_WORKER_REPLICAS_TRIGGER
   required: true
-  value: "80"   
+  value: "80"
+- description: Name for Spark UI Proxy.
+  name: SPARK_UI_PROXY
+  required: true
+  value: spark-ui-proxy     
 - description: Name for Zeppelin.
   name: ZEPPELIN
   required: true
   value: zeppelin
-- description: Name for Jupyter.
-  name: JUPYTER
-  required: true
-  value: jupyter  
 - description: Name for HDFS.
   name: HDFS
   required: true
