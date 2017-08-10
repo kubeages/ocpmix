@@ -205,6 +205,7 @@ objects:
               cpu: 100m          
         dnsPolicy: ClusterFirst
         restartPolicy: Always
+        serviceAccount: hadoop
         securityContext: {}
         terminationGracePeriodSeconds: 30              
     triggers:
@@ -285,6 +286,7 @@ objects:
           terminationMessagePath: /dev/termination-log
         dnsPolicy: ClusterFirst
         restartPolicy: Always
+        serviceAccount: hadoop
         securityContext: {}
         terminationGracePeriodSeconds: 30              
     triggers:
@@ -367,6 +369,7 @@ objects:
           terminationMessagePath: /dev/termination-log
         dnsPolicy: ClusterFirst
         restartPolicy: Always
+        serviceAccount: hadoop
         securityContext: {}
         terminationGracePeriodSeconds: 30              
     triggers:
