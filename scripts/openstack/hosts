@@ -2,6 +2,7 @@
 masters
 nodes
 etcd
+glusterfs
 
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
@@ -29,6 +30,9 @@ openshift_cloudprovider_openstack_lb_subnet_id=6e2e24d8-f528-4905-9981-3eeb8d221
 # enable ntp on masters to ensure proper failover
 openshift_clock_enabled=true
 
+# disable checks
+openshift_disable_check=memory_availability,disk_availability
+
 # Configure master API and console ports.
 openshift_master_api_port=443
 openshift_master_console_port=443
@@ -48,32 +52,38 @@ openshift_hosted_router_replicas=1
 
 # Registry
 openshift_hosted_registry_selector='purpose=infra'
+openshift_registry_selector='purpose=infra'
 openshift_hosted_registry_replicas=1
-openshift_hosted_registry_storage_kind=dynamic
+openshift_hosted_registry_storage_kind=glusterfs
 openshift_hosted_registry_storage_volume_size=50Gi
 
 # Logging
-openshift_hosted_logging_deploy=true
-openshift_hosted_master_logging_public_url=https://logging.apps.ageslab.com
-openshift_hosted_logging_hostname=logging.apps.ageslab.com
-openshift_hosted_logging_enable_ops_cluster=false
-openshift_hosted_logging_elasticsearch_cluster_size=1
-openshift_hosted_logging_curator_nodeselector='purpose=infra'
-openshift_hosted_logging_elasticsearch_nodeselector='purpose=infra'
-openshift_hosted_logging_kibana_nodeselector='purpose=infra'
-openshift_hosted_logging_fluentd_nodeselector_label='region=primary'
-openshift_hosted_logging_storage_kind=dynamic
-openshift_hosted_logging_storage_volume_size=50Gi
+openshift_logging_install_logging=true
+openshift_logging_image_version=v3.6
+openshift_logging_fluentd_nodeselector={"region":"primary"}
+openshift_logging_es_nodeselector={"purpose":"infra"}
+openshift_logging_es_cluster_size=1
+openshift_logging_es_pvc_dynamic=true
+openshift_logging_es_pvc_size=50G
+openshift_logging_kibana_ops_nodeselector={"purpose":"infra"}
+openshift_logging_kibana_hostname=logging.apps.ageslab.com
+openshift_logging_curator_nodeselector={"purpose":"infra"}
 
 # Metrics
-openshift_hosted_metrics_deploy=true
-openshift_hosted_metrics_public_url=https://metrics.apps.ageslab.com/hawkular/metrics
+openshift_metrics_install_metrics=true
+openshift_metrics_image_version=v3.6
 openshift_metrics_hawkular_hostname=metrics.apps.ageslab.com
-openshift_metrics_hawkular_nodeselector={"purpose":"infra"}
-openshift_metrics_cassandra_nodeselector={"purpose":"infra"}
-openshift_metrics_heapster_nodeselector={"purpose":"infra"}
-openshift_hosted_metrics_storage_kind=dynamic
-openshift_hosted_metrics_storage_volume_size=50Gi
+openshift_metrics_cassandra_storage_type=dynamic
+openshift_metrics_cassandra_pvc_size=50G
+openshift_metrics_cassandra_replicas=1
+
+# GlusterFS
+openshift_storage_glusterfs_namespace=cns
+openshift_storage_glusterfs_name=cns
+
+# Service Catalog / Ansible Service Broker
+#openshift_enable_service_catalog=true
+#openshift_template_service_broker_namespaces=['openshift','service-catalog']
 
 # host group for masters
 [masters]
@@ -82,6 +92,12 @@ master1.ageslab.com
 # host group for etcd
 [etcd]
 master1.ageslab.com
+
+# host group for gluster
+[glusterfs]
+appnode1.ageslab.com glusterfs_ip=172.18.10.8 glusterfs_devices='[ "/dev/vdc" ]'
+appnode2.ageslab.com glusterfs_ip=172.18.10.12 glusterfs_devices='[ "/dev/vdc" ]'
+appnode3.ageslab.com glusterfs_ip=172.18.10.16 glusterfs_devices='[ "/dev/vdc" ]'
 
 # host group for nodes, includes region info
 [nodes]
