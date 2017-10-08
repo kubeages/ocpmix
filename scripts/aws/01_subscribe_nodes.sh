@@ -10,7 +10,7 @@ ssh -tt $host "subscription-manager register --username=YOUR_RHN_USERNAME --pass
 ssh -tt $host "subscription-manager attach --pool=YOUR_RHN_POOL_ID"
 
 echo "Habilitando repos en $host"
-ssh -tt $host "subscription-manager repos --disable=*; sudo subscription-manager repos --enable='rhel-7-server-rpms' --enable='rhel-7-server-extras-rpms' --enable='rhel-7-server-ose-3.5-rpms' --enable='rhel-7-fast-datapath-rpms'"
+ssh -tt $host "subscription-manager repos --disable=*; sudo subscription-manager repos --enable='rhel-7-server-rpms' --enable='rhel-7-server-extras-rpms' --enable='rhel-7-server-ose-3.6-rpms' --enable='rhel-7-fast-datapath-rpms'"
 
 [ $? -ne 0 ] && echo "** FAIL **"
 
