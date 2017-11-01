@@ -9,7 +9,6 @@ objects:
 - kind: ServiceAccount
   apiVersion: v1
   metadata:
-    creationTimestamp: null
     labels:
       app: ${APPLICATION_NAME}
     name: ${APPLICATION_NAME}
@@ -17,93 +16,7 @@ objects:
   apiVersion: v1
   metadata:
     annotations:
-      description: Exposes the database server
-    name: ${APPLICATION_NAME}-postgresql
-  spec:
-    ports:
-    - name: postgresql
-      port: 5432
-      targetPort: 5432
-    selector:
-      name: ${APPLICATION_NAME}-postgresql
-- kind: DeploymentConfig
-  apiVersion: v1
-  metadata:
-    annotations:
-      description: Defines how to deploy the database
-    name: ${APPLICATION_NAME}-postgresql
-  spec:
-    replicas: 1
-    selector:
-      name: ${APPLICATION_NAME}-postgresql
-    strategy:
-      type: Recreate
-    template:
-      metadata:
-        labels:
-          name: ${APPLICATION_NAME}-postgresql
-        name: ${APPLICATION_NAME}-postgresql
-      spec:
-        serviceAccountName: ${APPLICATION_NAME}
-        containers:
-        - env:
-          - name: POSTGRESQL_USER
-            value: ${DATABASE_USER}
-          - name: POSTGRESQL_PASSWORD
-            value: ${DATABASE_PASSWORD}
-          - name: POSTGRESQL_DATABASE
-            value: ${DATABASE_NAME}
-          - name: POSTGRESQL_MAX_CONNECTIONS
-            value: ${DATABASE_MAX_CONNECTIONS}
-          - name: POSTGRESQL_SHARED_BUFFERS
-            value: ${DATABASE_SHARED_BUFFERS}
-          - name: POSTGRESQL_ADMIN_PASSWORD
-            value: ${DATABASE_ADMIN_PASSWORD}
-          image: ' '
-          livenessProbe:
-            initialDelaySeconds: 30
-            tcpSocket:
-              port: 5432
-            timeoutSeconds: 1
-          name: postgresql
-          ports:
-          - containerPort: 5432
-          readinessProbe:
-            exec:
-              command:
-              - /bin/sh
-              - -i
-              - -c
-              - psql -h 127.0.0.1 -U ${POSTGRESQL_USER} -q -d ${POSTGRESQL_DATABASE} -c 'SELECT 1'
-            initialDelaySeconds: 5
-            timeoutSeconds: 1
-          resources:
-            limits:
-              memory: 512Mi
-          volumeMounts:
-          - mountPath: /var/lib/pgsql/data
-            name: gogs-postgres-data
-        volumes:
-        - name: gogs-postgres-data
-          persistentVolumeClaim:
-            claimName: gogs-postgres-data
-    triggers:
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - postgresql
-        from:
-          kind: ImageStreamTag
-          name: postgresql:9.5
-          namespace: openshift
-      type: ImageChange
-    - type: ConfigChange
-- kind: Service
-  apiVersion: v1
-  metadata:
-    annotations:
       description: The Gogs server's http port
-      service.alpha.openshift.io/dependencies: '[{"name":"${APPLICATION_NAME}-postgresql","namespace":"","kind":"Service"}]'
     labels:
       app: ${APPLICATION_NAME}
     name: ${APPLICATION_NAME}
@@ -155,7 +68,6 @@ objects:
       type: Rolling
     template:
       metadata:
-        creationTimestamp: null
         labels:
           app: ${APPLICATION_NAME}
           deploymentconfig: ${APPLICATION_NAME}
@@ -174,7 +86,7 @@ objects:
           - name: gogs-data
             mountPath: /opt/gogs/data
           - name: gogs-config
-            mountPath: /etc/gogs/conf
+            mountPath: /opt/gogs/custom/conf
           readinessProbe:
               httpGet:
                 path: /
@@ -241,37 +153,33 @@ objects:
   apiVersion: v1
   metadata:
     name: gogs-data
+    labels:
+      app: ${APPLICATION_NAME}
   spec:
     accessModes:
       - ReadWriteOnce
     resources:
       requests:
         storage: ${GOGS_VOLUME_CAPACITY}
-- kind: PersistentVolumeClaim
-  apiVersion: v1
-  metadata:
-    name: gogs-postgres-data
-  spec:
-    accessModes:
-      - ReadWriteOnce
-    resources:
-      requests:
-        storage: ${DB_VOLUME_CAPACITY}
 - kind: ConfigMap
   apiVersion: v1
   metadata:
     name: gogs-config
+    labels:
+      app: ${APPLICATION_NAME}
   data:
     app.ini: |
       RUN_MODE = prod
       RUN_USER = gogs
 
       [database]
-      DB_TYPE  = postgres
-      HOST     = ${APPLICATION_NAME}-postgresql:5432
-      NAME     = ${DATABASE_NAME}
-      USER     = ${DATABASE_USER}
-      PASSWD   = ${DATABASE_PASSWORD}
+      DB_TYPE  = sqlite3
+      HOST     = 127.0.0.1:3306
+      NAME     = gogs
+      USER     = root
+      PASSWD   =
+      SSL_MODE = disable
+      PATH     = /opt/gogs/data/gogs.db
 
       [repository]
       ROOT = /opt/gogs/data/repositories
@@ -295,40 +203,15 @@ parameters:
   value: gogs
 - description: 'Custom hostname for http service route.  Leave blank for default hostname, e.g.: <application-name>-<project>.<default-domain-suffix>'
   name: HOSTNAME
-  required: false
+  required: true
 - description: Volume space available for data, e.g. 512Mi, 2Gi
   name: GOGS_VOLUME_CAPACITY
   required: true
   value: 1Gi
-- description: Volume space available for postregs data, e.g. 512Mi, 2Gi
-  name: DB_VOLUME_CAPACITY
-  required: true
-  value: 1Gi
-- displayName: Database Username
-  from: gogs
-  value: gogs
-  name: DATABASE_USER
-- displayName: Database Password
-  from: '[a-zA-Z0-9]{8}'
-  value: gogs
-  name: DATABASE_PASSWORD
-- displayName: Database Name
-  name: DATABASE_NAME
-  value: gogs
-- displayName: Database Admin Password
-  from: '[a-zA-Z0-9]{8}'
-  generate: expression
-  name: DATABASE_ADMIN_PASSWORD
-- displayName: Maximum Database Connections
-  name: DATABASE_MAX_CONNECTIONS
-  value: "100"
-- displayName: Shared Buffer Amount
-  name: DATABASE_SHARED_BUFFERS
-  value: 12MB
 - name: GOGS_VERSION
   displayName: Gogs Version
-  description: 'Version of the Gogs container image to be used (check the available version https://hub.docker.com/r/openshiftdemos/gogs/tags)'
-  value: "0.9.97"
+  description: 'Version of the Gogs container image to be used (check the available version https://hub.docker.com/r/openshiftdemos/gogs/tags, currently only 0.11.29 supports SQLite)'
+  value: "0.11.29"
   required: true
 - name: INSTALL_LOCK
   displayName: Installation lock
