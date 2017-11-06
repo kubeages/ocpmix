@@ -1,0 +1,93 @@
+[OSEv3:children]
+masters
+nodes
+etcd
+
+# Set variables common for all OSEv3 hosts
+[OSEv3:vars]
+ansible_ssh_user=your_username
+ansible_become=yes
+
+deployment_type=openshift-enterprise
+
+# Cloud Provider Configuration
+# GCE
+openshift_cloudprovider_kind=gce
+
+# Uncomment the following to enable htpasswd authentication; defaults to
+# DenyAllPasswordIdentityProvider.
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
+
+# apply updated node defaults
+openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
+
+# override the default controller lease ttl
+#osm_controller_lease_ttl=30
+
+# enable ntp on masters to ensure proper failover
+openshift_clock_enabled=true
+
+# Infrastructure
+#openshift_set_hostname=True
+
+# Configure master API and console ports.
+openshift_master_api_port=443
+openshift_master_console_port=443
+
+os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
+
+# disable checks
+openshift_disable_check=memory_availability,disk_availability,docker_storage,docker_storage_driver
+
+# Default subdomain
+openshift_master_default_subdomain=appsgcp.openshift.pub
+
+osm_default_node_selector='purpose=work'
+
+# Routers
+openshift_hosted_router_selector='purpose=infra'
+openshift_hosted_router_replicas=1
+
+# Registry
+# Registry will only be created if nodes matching this label are present.
+openshift_hosted_registry_selector='purpose=infra'
+openshift_hosted_registry_replicas=1
+
+# Logging
+openshift_master_logging_public_url=https://logging.appsgcp.openshift.pub
+openshift_hosted_logging_hostname=logging.appsgcp.openshift.pub
+openshift_hosted_logging_storage_kind=dynamic
+openshift_hosted_logging_deploy=false
+openshift_hosted_logging_hostname=logging.appsgcp.openshift.pub
+openshift_hosted_logging_elasticsearch_cluster_size=1
+openshift_hosted_logging_elasticsearch_nodeselector='purpose=infra'
+openshift_hosted_logging_fluentd_nodeselector='region=primary'
+openshift_hosted_logging_kibana_nodeselector='purpose=infra'
+openshift_hosted_logging_curator_nodeselector='purpose=infra'
+openshift_hosted_logging_storage_volume_size=10Gi
+
+# Metrics
+openshift_hosted_metrics_public_url=https://metrics.appsgcp.openshift.pub/hawkular/metrics
+openshift_hosted_metrics_deploy=false
+openshift_hosted_metrics_storage_kind=dynamic
+openshift_hosted_metrics_selector='purpose=infra'
+openshift_metrics_hawkular_hostname=metrics.appsgcp.openshift.pub
+openshift_metrics_hawkular_nodeselector={"purpose":"infra"}
+openshift_metrics_cassandra_nodeselector={"purpose":"infra"}
+openshift_metrics_heapster_nodeselector={"purpose":"infra"}
+openshift_hosted_metrics_storage_volume_size=10Gi
+
+# host group for masters
+[masters]
+ocpmaster
+
+# host group for etcd
+[etcd]
+ocpmaster
+
+# host group for nodes, includes region info
+[nodes]
+ocpmaster openshift_public_hostname=mastergcp.openshift.pub openshift_node_labels="{'region': 'primary', 'purpose':'infra'}" openshift_schedulable=false
+ocpinfra openshift_node_labels="{'region':'primary', 'purpose':'infra'}"
+ocpappnode1 openshift_node_labels="{'region':'primary', 'purpose':'work','target':'dev1'}"
+ocpappnode2 openshift_node_labels="{'region':'primary', 'purpose':'work','target':'dev2'}"
