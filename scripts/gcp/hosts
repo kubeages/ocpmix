@@ -2,6 +2,7 @@
 masters
 nodes
 etcd
+glusterfs
 
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
@@ -123,6 +124,10 @@ openshift_management_project_description=CloudForms Management Engine
 openshift_management_storage_class=preconfigured
 openshift_management_app_template=cfme-template
 
+# GlusterFS
+openshift_storage_glusterfs_namespace=cns
+openshift_storage_glusterfs_name=cns
+
 # host group for masters
 [masters]
 ocpmaster
@@ -130,6 +135,12 @@ ocpmaster
 # host group for etcd
 [etcd]
 ocpmaster
+
+# host group for gluster
+[glusterfs]
+ocpappnode1 glusterfs_ip=10.132.0.5 glusterfs_devices='[ "/dev/vdc" ]'
+ocpappnode2 glusterfs_ip=10.132.0.4 glusterfs_devices='[ "/dev/vdf" ]'
+ocpappnode3 glusterfs_ip=10.132.0.8 glusterfs_devices='[ "/dev/vde" ]'
 
 # host group for nodes, includes region info
 [nodes]
