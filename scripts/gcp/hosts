@@ -127,6 +127,8 @@ openshift_management_app_template=cfme-template
 # GlusterFS
 openshift_storage_glusterfs_namespace=cns
 openshift_storage_glusterfs_name=cns
+openshift_storage_glusterfs_wipe=True
+openshift_storage_glusterfs_storageclass=True
 
 # host group for masters
 [masters]
@@ -138,9 +140,9 @@ ocpmaster
 
 # host group for gluster
 [glusterfs]
-ocpappnode1 glusterfs_ip=10.132.0.5 glusterfs_devices='[ "/dev/vdc" ]'
-ocpappnode2 glusterfs_ip=10.132.0.4 glusterfs_devices='[ "/dev/vdf" ]'
-ocpappnode3 glusterfs_ip=10.132.0.8 glusterfs_devices='[ "/dev/vde" ]'
+ocpappnode1 glusterfs_ip=10.132.0.5 glusterfs_devices='[ "/dev/sdc" ]'
+ocpappnode2 glusterfs_ip=10.132.0.4 glusterfs_devices='[ "/dev/sdc" ]'
+ocpappnode3 glusterfs_ip=10.132.0.8 glusterfs_devices='[ "/dev/sdc" ]'
 
 # host group for nodes, includes region info
 [nodes]
