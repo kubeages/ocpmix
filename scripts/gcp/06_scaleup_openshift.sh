@@ -1,1 +1,1 @@
-ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/openshift-node/scaleup.yml
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/openshift-node/scaleup.yml

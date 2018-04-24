@@ -2,7 +2,6 @@
 masters
 nodes
 etcd
-glusterfs
 
 # Set variables common for all OSEv3 hosts
 [OSEv3:vars]
@@ -14,11 +13,13 @@ deployment_type=openshift-enterprise
 # Cloud Provider Configuration
 # GCE
 openshift_cloudprovider_kind=gce
+openshift_gcp_project=project_name
+openshift_gcp_prefix=project_name
+openshift_gcp_multizone=False
 
 # Uncomment the following to enable htpasswd authentication; defaults to
 # DenyAllPasswordIdentityProvider.
 openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
-openshift_master_htpasswd_users={'admin': '$apr1$V2jR7gzC$bCgwr61er5zIjmQo4AKFY0', 'ages': '$apr1$V2jR7gzC$bCgwr61er5zIjmQo4AKFY0'}
 
 # apply updated node defaults
 openshift_node_kubelet_args={'pods-per-core': ['10'], 'max-pods': ['250'], 'image-gc-high-threshold': ['90'], 'image-gc-low-threshold': ['80']}
@@ -36,34 +37,43 @@ openshift_clock_enabled=true
 openshift_master_api_port=443
 openshift_master_console_port=443
 
-os_sdn_network_plugin_name=redhat/openshift-ovs-networkpolicy
+os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
 
 # disable checks
 openshift_disable_check=memory_availability,disk_availability,docker_storage,docker_storage_driver
 
 # Default subdomain and node labelling
-openshift_master_default_subdomain=appsgcp.openshift.pub
+openshift_master_default_subdomain=APPS_SUBDOMAIN
 osm_default_node_selector='purpose=work'
 
 # Audit parameters
 openshift_master_audit_config={"enabled": true}
-openshift_master_audit_config={"enabled": true, "auditFilePath": "/var/log/openpaas-oscp-audit/openpaas-oscp-audit.log", "maximumFileRetentionDays": 14, "maximumFileSizeMegabytes": 500, "maximumRetainedFiles": 5}
+openshift_master_audit_config={"enabled": true, "auditFilePath": "/var/log/openpaas-oscp-audit/openpaas-oscp-audit.log", "maximumFileRetentionDays": 14, "maximumFileSizeMegabytes": 50, "maximumRetainedFiles": 5}
+
+# Routers
+openshift_hosted_router_selector='region=infra'
+openshift_hosted_router_replicas=1
+
+# Registry
+# Registry will only be created if nodes matching this label are present.
+openshift_hosted_registry_selector='region=infra'
+openshift_hosted_registry_replicas=1
 
 # Prometheus
 openshift_hosted_prometheus_deploy=true
 openshift_prometheus_namespace=openshift-metrics
-openshift_prometheus_node_selector={"mission":"infra"}
+openshift_prometheus_node_selector={"region":"infra"}
 openshift_prometheus_storage_kind=dynamic
 openshift_prometheus_storage_volume_name=prometheus
-openshift_prometheus_storage_volume_size=10Gi
+openshift_prometheus_storage_volume_size=10G
 openshift_prometheus_storage_type='pvc'
 openshift_prometheus_alertmanager_storage_kind=dynamic
 openshift_prometheus_alertmanager_storage_volume_name=prometheus-alertmanager
-openshift_prometheus_alertmanager_storage_volume_size=10Gi
+openshift_prometheus_alertmanager_storage_volume_size=10G
 openshift_prometheus_alertmanager_storage_type='pvc'
 openshift_prometheus_alertbuffer_storage_kind=dynamic
 openshift_prometheus_alertbuffer_storage_volume_name=prometheus-alertbuffer
-openshift_prometheus_alertbuffer_storage_volume_size=10Gi
+openshift_prometheus_alertbuffer_storage_volume_size=10G
 openshift_prometheus_alertbuffer_storage_type='pvc'
 
 # Service catalog
@@ -77,77 +87,55 @@ openshift_service_catalog_image_prefix=registry.access.redhat.com/openshift3/ose
 openshift_hosted_etcd_storage_kind=dynamic
 openshift_hosted_etcd_storage_volume_name=etcd-vol
 openshift_hosted_etcd_storage_access_modes=["ReadWriteOnce"]
-openshift_hosted_etcd_storage_volume_size=128M
+openshift_hosted_etcd_storage_volume_size=1G
 openshift_hosted_etcd_storage_labels={'storage': 'etcd'}
 openshift_template_service_broker_namespaces=['openshift']
 
-# Routers
-openshift_hosted_router_selector='mission=infra'
-openshift_hosted_router_replicas=1
-
-# Registry
-# Registry will only be created if nodes matching this label are present.
-openshift_hosted_registry_selector='mission=infra'
-openshift_hosted_registry_replicas=1
-
 # Logging
-openshift_master_logging_public_url=https://logging.appsgcp.openshift.pub
+openshift_master_logging_public_url=https://logging.APPS_SUBDOMAIN
 openshift_logging_use_ops=false
 openshift_logging_namespace=logging
 openshift_logging_install_logging=true
-openshift_logging_kibana_hostname=logging.appsgcp.openshift.pub
+openshift_logging_kibana_hostname=logging.APPS_SUBDOMAIN
 openshift_logging_es_pvc_dynamic=true
 openshift_logging_es_pvc_size=10Gi
-openshift_logging_es_nodeselector={"mission":"infra"}
-openshift_logging_curator_nodeselector={"mission":"infra"}
-openshift_logging_kibana_nodeselector={"mission":"infra"}
+openshift_logging_es_nodeselector={"region":"infra"}
+openshift_logging_curator_nodeselector={"region":"infra"}
+openshift_logging_kibana_nodeselector={"region":"infra"}
 openshift_logging_fluentd_nodeselector={"region":"primary"}
 
 # Metrics
-openshift_master_metrics_public_url=https://metrics.appsgcp.openshift.pub/hawkular/metrics
+openshift_master_metrics_public_url=https://metrics.APPS_SUBDOMAIN
 openshift_metrics_install_metrics=true
 openshift_metrics_cassandra_pvc_size=10Gi
 openshift_metrics_cassandra_storage_type=dynamic
-openshift_metrics_cassandra_nodeselector={"mission":"infra"}
-openshift_metrics_hawkular_nodeselector={"mission":"infra"}
-openshift_metrics_hawkular_hostname=metrics.appsgcp.openshift.pub
-openshift_metrics_hawkular_nodeselector={"mission":"infra"}
-openshift_metrics_cassandra_nodeselector={"mission":"infra"}
-openshift_metrics_heapster_nodeselector={"mission":"infra"}
+openshift_metrics_hawkular_hostname=metrics.APPS_SUBDOMAIN
+openshift_metrics_hawkular_nodeselector={"region":"infra"}
+openshift_metrics_cassandra_nodeselector={"region":"infra"}
+openshift_metrics_heapster_nodeselector={"region":"infra"}
 openshift_metrics_install_hawkular_agent=true
 
 # CloudForms
-openshift_management_install_management=true
+openshift_management_install_management=false
 openshift_management_install_beta=true
 openshift_management_project=openshift-management
 openshift_management_project_description=CloudForms Management Engine
-openshift_management_storage_class=preconfigured
+openshift_management_storage_class=cloudprovider
 openshift_management_app_template=cfme-template
-
-# GlusterFS
-openshift_storage_glusterfs_namespace=cns
-openshift_storage_glusterfs_name=cns
-openshift_storage_glusterfs_wipe=True
-openshift_storage_glusterfs_storageclass=True
+openshift_management_template_parameters={'APPLICATION_MEM_REQ': '3000Mi', 'POSTGRESQL_MEM_REQ': '1Gi', 'ANSIBLE_MEM_REQ': '512Mi', 'APPLICATION_VOLUME_CAPACITY': '10Gi', 'DATABASE_VOLUME_CAPACITY': '25Gi'}
 
 # host group for masters
 [masters]
-ocpmaster
+master
 
 # host group for etcd
 [etcd]
-ocpmaster
-
-# host group for gluster
-[glusterfs]
-ocpappnode1 glusterfs_ip=10.132.0.5 glusterfs_devices='[ "/dev/sdc" ]'
-ocpappnode2 glusterfs_ip=10.132.0.4 glusterfs_devices='[ "/dev/sdc" ]'
-ocpappnode3 glusterfs_ip=10.132.0.8 glusterfs_devices='[ "/dev/sdc" ]'
+master
 
 # host group for nodes, includes region info
 [nodes]
-ocpmaster openshift_public_hostname=mastergcp.openshift.pub openshift_node_labels="{'region': 'primary', 'purpose':'work'}"
-ocpinfra openshift_node_labels="{'region':'primary', 'purpose':'work', 'mission':'infra'}"
-ocpappnode1 openshift_node_labels="{'region':'primary', 'purpose':'work','target':'dev1'}"
-ocpappnode2 openshift_node_labels="{'region':'primary', 'purpose':'work','target':'dev2'}"
-ocpappnode3 openshift_node_labels="{'region':'primary', 'purpose':'work','target':'dev3'}"
+master openshift_public_hostname=WEBCONSOLE_FQDN openshift_node_labels="{'region': 'primary', 'purpose':'work', 'mission':'master'}"
+infranode openshift_node_labels="{'region':'infra', 'purpose':'work', 'mission':'infra'}"
+appnode1 openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
+appnode2 openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
+

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ALL_HOSTS="ocpmaster ocpinfra ocpappnode1 ocpappnode2"
+ALL_HOSTS="master infranode appnode1 appnode2"
 
 for host in $ALL_HOSTS
 do
