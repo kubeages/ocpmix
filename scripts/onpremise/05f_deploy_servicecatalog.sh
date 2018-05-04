@@ -1,1 +1,1 @@
-ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/openshift-cluster/service-catalog.yml
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/openshift-service-catalog/config.yml

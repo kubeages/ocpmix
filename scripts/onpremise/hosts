@@ -31,7 +31,7 @@ openshift_set_hostname=true
 openshift_master_api_port=8443
 openshift_master_console_port=8443
 
-os_sdn_network_plugin_name=redhat/openshift-ovs-multitenant
+os_sdn_network_plugin_name=redhat/openshift-ovs-networkpolicy
 
 # disable checks
 openshift_disable_check=memory_availability,disk_availability,docker_storage,docker_storage_driver
@@ -163,6 +163,6 @@ infranode.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'wor
 appnode1.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
 appnode2.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
 appnode3.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
-appnode4.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev','baremetal':'true'}"
 
 [new_nodes]
+#appnode4.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev','baremetal':'true'}"

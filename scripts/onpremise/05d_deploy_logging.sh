@@ -1,0 +1,1 @@
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/openshift-logging/config.yml
