@@ -26,6 +26,10 @@ parameters:
   name: SESSION_SECRET
   generate: expression
   from: "[a-zA-Z0-9]{43}"
+- description: Volume space available for Grafana e.g. 512Mi, 2Gi
+  displayName: Volume Space for Grafana
+  name: VOLUME_CAPACITY
+  value: 2Gi
 objects:
 - apiVersion: v1
   kind: ServiceAccount
@@ -75,6 +79,18 @@ objects:
       targetPort: 8443
     selector:
       app: grafana-ocp
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    labels:
+      app: grafana-ocp
+    name: grafana-ocp-pvc
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: ${VOLUME_CAPACITY}
 - apiVersion: v1
   kind: Secret
   metadata:
@@ -157,8 +173,9 @@ objects:
         - name: gf-tls
           secret:
             secretName: gf-tls
-        - emptyDir: {}
-          name: gf-data
+        - name: gf-data
+          persistentVolumeClaim:
+            claimName: grafana-ocp-pvc
 - apiVersion: v1
   kind: ConfigMap
   metadata:
