@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-metrics
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 30Gi
+  nfs:
+    path: /volume5/nfs1/openshift/metrics
+    server: 192.168.1.14
+  persistentVolumeReclaimPolicy: Delete

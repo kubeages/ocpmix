@@ -10,6 +10,7 @@ new_nodes
 ansible_ssh_user=root
 
 deployment_type=openshift-enterprise
+openshift_enable_unsupported_configurations=True
 
 # Uncomment the following to enable htpasswd authentication; defaults to
 # DenyAllPasswordIdentityProvider.
@@ -44,8 +45,8 @@ osm_default_node_selector='purpose=work'
 openshift_master_audit_config={"enabled": true, "auditFilePath": "/var/log/openpaas-oscp-audit/openpaas-oscp-audit.log", "maximumFileRetentionDays": 14, "maximumFileSizeMegabytes": 50, "maximumRetainedFiles": 3}
 
 # CRI-o
-openshift_use_crio=true
-openshift_crio_enable_docker_gc=true
+openshift_use_crio=false
+#openshift_crio_enable_docker_gc=true
 
 # GlusterFS
 openshift_storage_glusterfs_namespace=cns
@@ -61,70 +62,82 @@ openshift_storage_glusterfs_block_host_vol_size=50
 openshift_storage_glusterfs_block_storageclass=True
 
 # Routers
-openshift_hosted_router_selector='mission=infra'
+openshift_hosted_router_selector='region=infra'
 openshift_hosted_router_replicas=1
 
 # Registry
-openshift_hosted_registry_selector='mission=infra'
+openshift_hosted_registry_selector='region=infra'
 openshift_hosted_registry_replicas=1
-openshift_hosted_registry_storage_kind=glusterfs
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+openshift_hosted_registry_storage_host=192.168.1.14
+openshift_hosted_registry_storage_nfs_directory=/volume5/nfs1/openshift
+openshift_hosted_registry_storage_volume_name=registry
 openshift_hosted_registry_storage_volume_size=50Gi
 
 # Logging
 openshift_master_logging_public_url=https://logging.apps.openshift.pub
 openshift_logging_use_ops=false
 openshift_logging_namespace=logging
-openshift_logging_install_logging=false
+openshift_logging_install_logging=true
 openshift_logging_kibana_hostname=logging.apps.openshift.pub
-openshift_logging_es_nodeselector={"mission":"infra"}
-openshift_logging_curator_nodeselector={"mission":"infra"}
-openshift_logging_kibana_nodeselector={"mission":"infra"}
-openshift_logging_fluentd_nodeselector={"region":"primary"}
-openshift_logging_es_pvc_size=10Gi
-openshift_logging_es_pvc_dynamic=false
-openshift_logging_es_pvc_storage_class_name=glusterfs-cns
+openshift_logging_es_nodeselector={"region":"infra"}
+openshift_logging_curator_nodeselector={"region":"infra"}
+openshift_logging_kibana_nodeselector={"region":"infra"}
+openshift_logging_fluentd_nodeselector={"logging":"true"}
+openshift_logging_storage_kind=nfs
+openshift_logging_storage_access_modes=['ReadWriteOnce']
+openshift_logging_storage_host=192.168.1.14
+openshift_logging_storage_nfs_directory=/volume5/nfs1/openshift
+openshift_logging_storage_volume_name=logging
+openshift_logging_storage_volume_size=50Gi
+openshift_logging_storage_labels={'storage': 'logging'}
 
 # Metrics
 openshift_master_metrics_public_url=https://metrics.apps.openshift.pub/hawkular/metrics
-openshift_metrics_install_metrics=false
+openshift_metrics_install_metrics=true
 openshift_metrics_hawkular_hostname=metrics.apps.openshift.pub
-openshift_metrics_hawkular_nodeselector={"mission":"infra"}
-openshift_metrics_cassandra_nodeselector={"mission":"infra"}
-openshift_metrics_heapster_nodeselector={"mission":"infra"}
-#openshift_metrics_install_hawkular_agent=true
-openshift_metrics_cassandra_pvc_size=10Gi
-openshift_metrics_cassandra_storage_type=dynamic
+openshift_metrics_hawkular_nodeselector={"region":"infra"}
+openshift_metrics_cassandra_nodeselector={"region":"infra"}
+openshift_metrics_heapster_nodeselector={"region":"infra"}
+openshift_metrics_storage_kind=nfs
+openshift_metrics_storage_access_modes=['ReadWriteOnce']
+openshift_metrics_storage_host=192.168.1.14
+openshift_metrics_storage_nfs_directory=/volume5/nfs1/openshift
+openshift_metrics_storage_volume_name=metrics
+openshift_metrics_storage_volume_size=30Gi
+openshift_metrics_storage_labels={'storage': 'metrics'}
 
 # Prometheus
 openshift_hosted_prometheus_deploy=false
 openshift_prometheus_namespace=openshift-metrics
-openshift_prometheus_node_selector={"mission":"infra"}
-openshift_prometheus_storage_kind=dynamic
+openshift_prometheus_node_selector={"region":"infra"}
 openshift_prometheus_storage_volume_name=prometheus
-openshift_prometheus_storage_volume_size=8Gi
+openshift_prometheus_storage_volume_size=20Gi
 openshift_prometheus_storage_type='pvc'
-openshift_prometheus_alertmanager_storage_kind=dynamic
 openshift_prometheus_alertmanager_storage_volume_name=prometheus-alertmanager
 openshift_prometheus_alertmanager_storage_volume_size=1Gi
 openshift_prometheus_alertmanager_storage_type='pvc'
-openshift_prometheus_alertbuffer_storage_kind=dynamic
 openshift_prometheus_alertbuffer_storage_volume_name=prometheus-alertbuffer
 openshift_prometheus_alertbuffer_storage_volume_size=1Gi
 openshift_prometheus_alertbuffer_storage_type='pvc'
 
+# Grafana
+openshift_grafana_node_exporter=true
+
 # Service catalog
-openshift_enable_service_catalog=false
-ansible_service_broker_install=false
-template_service_broker_install=false
+openshift_enable_service_catalog=true
+ansible_service_broker_install=true
+template_service_broker_install=true
 dynamic_volumes_check=false
-openshift_storageclass_name=glusterfs-cns
 openshift_service_catalog_image_version=latest
 ansible_service_broker_image_prefix=registry.access.redhat.com/openshift3/ose-
 ansible_service_broker_registry_url="registry.access.redhat.com"
+ansible_service_broker_local_registry_whitelist=['.*-apb$']
 openshift_service_catalog_image_prefix=registry.access.redhat.com/openshift3/ose-
-template_service_broker_selector={"mission":"infra"}
+template_service_broker_selector={"region":"infra"}
 openshift_template_service_broker_namespaces=['openshift']
-openshift_hosted_etcd_storage_kind=dynamic
+openshift_hosted_etcd_storage_kind=nfs
 openshift_hosted_etcd_storage_volume_name=etcd-vol
 openshift_hosted_etcd_storage_access_modes=["ReadWriteOnce"]
 openshift_hosted_etcd_storage_volume_size=1Gi
@@ -152,17 +165,17 @@ master.ageslab.com
 
 # host group for gluster
 [glusterfs]
-appnode1.ageslab.com glusterfs_ip=192.168.1.207 glusterfs_devices='[ "/dev/sdc" ]'
-appnode2.ageslab.com glusterfs_ip=192.168.1.208 glusterfs_devices='[ "/dev/sdc" ]'
-appnode3.ageslab.com glusterfs_ip=192.168.1.211 glusterfs_devices='[ "/dev/sdc" ]'
+appnode1.ageslab.com glusterfs_ip=192.168.1.207 glusterfs_devices='[ "/dev/vdb" ]'
+appnode2.ageslab.com glusterfs_ip=192.168.1.208 glusterfs_devices='[ "/dev/vdb" ]'
+appnode3.ageslab.com glusterfs_ip=192.168.1.209 glusterfs_devices='[ "/dev/vdb" ]'
 
 # host group for nodes, includes region info
 [nodes]
-master.ageslab.com openshift_public_hostname=webconsole.openshift.pub openshift_node_labels="{'region': 'primary', 'purpose':'work','mission':'master'}"
-infranode.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work', 'mission':'infra'}"
-appnode1.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
-appnode2.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
-appnode3.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev'}"
+master.ageslab.com openshift_public_hostname=webconsole.openshift.pub openshift_node_labels="{'region': 'master', 'mission':'master', 'logging':'true'}"
+infranode.ageslab.com openshift_node_labels="{'region':'infra', 'mission':'infra', 'logging':'true'}"
+appnode1.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev', 'logging':'true'}"
+appnode2.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev', 'logging':'true'}"
+appnode3.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev', 'logging':'true'}"
 
 [new_nodes]
 #appnode4.ageslab.com openshift_node_labels="{'region':'primary', 'purpose':'work','mission':'dev','baremetal':'true'}"
