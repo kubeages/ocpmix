@@ -19,7 +19,7 @@ spec:
                 
                 echo 'Cloning ola app repo'
                     git branch: 'master',
-                        url: 'http://gogs.apps.ctdev.comtrust.ae/etisalat/springboot-ola.git'
+                        url: 'http://gogs/springboot-ola.git'
                 
                 version = "${env.BUILD_NUMBER}"
                 echo 'Defined build version: ${version}'
