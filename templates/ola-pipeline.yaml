@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: BuildConfig
+metadata:
+  labels:
+    app: ola
+    name: ola-creation-pipeline
+  name: ola-creation-pipeline
+spec:
+  runPolicy: Serial
+  source:
+    type: None
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        node('maven') {
+            
+            stage('Build') {
+                echo "Welcome to Build Stage for Sample Ola app"
+                
+                echo 'Cloning ola app repo'
+                    git branch: 'master',
+                        url: 'http://gogs.apps.ctdev.comtrust.ae/etisalat/springboot-ola.git'
+                
+                version = "${env.BUILD_NUMBER}"
+                echo 'Defined build version: ${version}'
+                
+                echo 'Creating ola app image'
+                    // Build ola image
+                    is_ola_built = sh (returnStdout: true, script: "oc get is ola --no-headers=true -n etisalat-development | awk '{print \$1}'").trim()
+                    if (is_ola_built != "ola") {
+                        echo "Building ola on etisalat-dev, using Source2Image strategy"
+                        sh "oc new-build . --strategy=source --image-stream=openshift/redhat-openjdk18-openshift:1.2 --name ola --labels=app=ola  -n etisalat-development"
+                        sh "oc cancel-build bc/ola -n etisalat-development"
+                        sh "oc start-build ola --from-dir=. --wait=true -n etisalat-development"
+                        sh "oc tag etisalat-development/ola:latest etisalat-development/ola:${version}"
+                    } else {
+                        echo "ola image already created, updating it"
+                        sh "oc start-build ola --from-dir=. --wait=true -n etisalat-development"
+                        sh "oc tag etisalat-development/ola:latest etisalat-development/ola:${version}"
+                    }
+
+                echo 'Deploying ola service, version: ${version}'
+                    is_ola_deployed = sh (returnStdout: true, script: "oc get svc ola --no-headers=true -n etisalat-development | awk '{print \$1}'").trim()
+                    if (is_ola_deployed != "ola") {
+                        echo "Deploying ola, using the previously created image"
+                        sh "oc new-app etisalat-development/ola:${version} -n etisalat-development"
+                        sh "oc expose svc ola -n etisalat-development"
+                    } else {
+                        echo "ola service is already deployed. . New deployment is triggered automatically when image change"
+                    }
+            } //End of Build Stage
+
+            stage('Test') {
+                echo "Welcome to Test Stage for ola app"
+                
+                echo 'Deploying ola service on test environment'
+                    is_ola_deployed = sh (returnStdout: true, script: "oc get svc ola --no-headers=true -n etisalat-test | awk '{print \$1}'").trim()
+                    if (is_ola_deployed != "ola") {
+                        echo "Deploying ola, using the previously created image"
+                        sh "oc tag etisalat-development/ola:${version} etisalat-test/ola:${version}"
+                        sh "oc new-app etisalat-test/ola:${version} -n etisalat-test"
+                        sh "oc expose svc ola -n etisalat-test"
+                    } else {
+                        echo "ola service is already deployed. New deployment is triggered automatically when image change"
+                        sh "oc tag etisalat-development/ola:${version} etisalat-test/ola:${version}"
+                    } 
+               
+            } // End of test stage              
+
+            stage('Production') {
+                input message: "Promote to Production stage?", ok: "Promote"
+              
+                echo "Welcome to Production Stage for ola app"
+  
+                echo 'Deploying ola service'
+                    is_ola_deployed = sh (returnStdout: true, script: "oc get svc ola --no-headers=true -n etisalat-prod | awk '{print \$1}'").trim()
+                    if (is_ola_deployed != "ola") {
+                        echo "Deploying ola, using the previously created image"
+                        sh "oc tag etisalat-test/ola:${version} etisalat-prod/ola:${version}"
+                        sh "oc new-app etisalat-prod/ola:${version} -n etisalat-prod"
+                        sh "oc expose svc ola -n etisalat-prod"
+                    } else {
+                        echo "ola service is already deployed. . New deployment is triggered automatically when image change"
+                        sh "oc tag etisalat-test/ola:${version} etisalat-prod/ola:${version}"
+                    }            
+            } // End of prod stage              
+        }
