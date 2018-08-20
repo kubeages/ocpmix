@@ -1,1 +1,1 @@
-Scripts for onpremise install. 3.9 updated
+Scripts for onpremise install. 3.10 updated
