@@ -133,9 +133,9 @@ appnode3.ageslab.com glusterfs_devices='[ "/dev/vdb" ]'
 # host group for nodes
 [nodes]
 master.ageslab.com openshift_node_group_name='node-config-master-infra' openshift_public_hostname='webconsole.openshift.pub' 
-appnode1.ageslab.com openshift_node_group_name='node-config-compute'
-appnode2.ageslab.com openshift_node_group_name='node-config-compute'
-appnode3.ageslab.com openshift_node_group_name='node-config-compute'
+appnode1.ageslab.com openshift_node_group_name='node-config-compute-crio'
+appnode2.ageslab.com openshift_node_group_name='node-config-compute-crio'
+appnode3.ageslab.com openshift_node_group_name='node-config-compute-crio'
 
 [new_nodes]
 #appnode4.ageslab.com openshift_node_group_name='node-config-compute'
