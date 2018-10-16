@@ -31,6 +31,16 @@ objects:
     selector:
       deploymentconfig: ${SERVICE_NAME}
     strategy:
+      recreateParams:
+        timeoutSeconds: 600
+        post:
+          failurePolicy: Abort
+          execNewPod:
+            containerName: ${SERVICE_NAME}
+            command:
+              - "/bin/bash"
+              - "-c"
+              - "curl -o /tmp/nexus-functions -s https://raw.githubusercontent.com/OpenShiftDemos/nexus/master/scripts/nexus-functions; source /tmp/nexus-functions; add_nexus3_redhat_repos admin admin123 http://${SERVICE_NAME}:8081"
       type: Recreate
     template:
       metadata:
@@ -41,8 +51,6 @@ objects:
         - env:
           - name: CONTEXT_PATH
             value: /
-          - name: INSTALL4J_ADD_VM_PARAMS
-            value: -Xms1200m -Xmx1200m -Djava.util.prefs.userRoot=/nexus-data/
           image: ' '
           imagePullPolicy: IfNotPresent
           livenessProbe:
@@ -71,7 +79,9 @@ objects:
             timeoutSeconds: 1
           resources:
             limits:
-              memory: 2Gi
+              memory: ${MAX_MEMORY}
+            requests:
+              memory: 512Mi
           terminationMessagePath: /dev/termination-log
           volumeMounts:
           - mountPath: /nexus-data
@@ -137,17 +147,21 @@ objects:
       requests:
         storage: ${VOLUME_CAPACITY}
 parameters:
-- description: Sonatype Nexus service name
-  displayName: Sonatype Nexus service name
+- displayName: Sonatype Nexus service name
   name: SERVICE_NAME
   required: true
   value: nexus
-- description: Sonatype Nexus version
-  displayName: Sonatype Nexus version
+- displayName: Sonatype Nexus version
   name: NEXUS_VERSION
   required: true
-  value: latest
+  value: 3.6.0
 - description: Volume space available for Sonatype Nexus e.g. 512Mi, 2Gi
+  displayName: Volume Space for Nexus
   name: VOLUME_CAPACITY
   required: true
   value: 2Gi
+- description: Max memory allocated to the Nexus pod
+  displayName: Max Memory
+  name: MAX_MEMORY
+  required: true
+  value: 1Gi

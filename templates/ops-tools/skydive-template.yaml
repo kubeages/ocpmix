@@ -23,6 +23,10 @@ objects:
       port: 12379
       protocol: TCP
       targetPort: 12379
+    - name: etcd-cluster
+      port: 12380
+      protocol: TCP
+      targetPort: 12380
     - name: es
       port: 9200
       protocol: TCP
@@ -84,6 +88,8 @@ objects:
             protocol: UDP
           - containerPort: 12379
             protocol: TCP
+          - containerPort: 12380
+            protocol: TCP
           readinessProbe:
             failureThreshold: 1
             tcpSocket:
@@ -92,7 +98,7 @@ objects:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
-        - image: elasticsearch:2
+        - image: elasticsearch:5
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3

@@ -1,0 +1,66 @@
+---
+
+- hosts: nodes
+  gather_facts: false
+
+  tasks:
+    - name: subscribe nodes
+      redhat_subscription:
+        state: present
+        username: "{{oreg_auth_user}}"
+        password: "{{oreg_auth_password}}"
+        pool_ids: "{{pool_id}}"
+      tags: subscription,nodes
+
+    - name: disable all repos on nodes
+      shell: |
+        subscription-manager repos --disable='*'
+      tags: repos,nodes
+
+    - name: enable repos on nodes
+      shell: |
+        subscription-manager repos --enable='{{item}}'
+      with_items:
+      - rhel-7-server-rpms
+      - rhel-7-server-extras-rpms
+      - rhel-7-server-ose-3.11-rpms
+      - rhel-7-server-ansible-2.6-rpms
+      - rh-gluster-3-client-for-rhel-7-server-rpms
+      tags: repos,nodes
+
+    - name: install software
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - wget
+        - git
+        - net-tools
+        - bind-utils
+        - yum-utils
+        - tcpdump
+        - iptables-services
+        - bridge-utils
+        - bash-completion
+        - kexec-tools
+        - sos
+        - psacct
+        - nfs-utils
+      tags: sw,nodes
+
+    - name: update all
+      yum:
+        name: '*'
+        state: latest
+      tags: sw,nodes
+
+    - name: install last packages
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - glusterfs-fuse
+        - docker-1.13.1
+        - cri-o
+        - cri-tools
+      tags: sw,nodes

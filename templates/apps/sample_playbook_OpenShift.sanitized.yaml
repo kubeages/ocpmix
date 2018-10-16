@@ -1,0 +1,112 @@
+---
+
+- hosts: localhost
+  gather_facts: false
+
+  vars:
+    ocp_cli: LOCATION_OC
+    ocp_host: HOST
+    ocp_host_port: PORT
+    ocp_username: USERNAME
+    ocp_password: PASSWORD
+    project_name: PROJECT-NAME
+    app_name: ola
+    app_repo: https://github.com/redhat-helloworld-msa/ola
+    runtime: openshift/redhat-openjdk18-openshift:1.4 
+
+  tasks:
+
+  - name: Login into OpenShift
+    shell: |
+      {{ ocp_cli }} login https://{{ ocp_host }}:{{ ocp_host_port }} --username='{{ ocp_username }}' --password='{{ ocp_password }}'
+
+  - name: Check existing projects
+    shell: oc get projects | awk '{ print $1 }'
+    register: projects
+    changed_when: false
+
+  - name: Create project
+    shell: |
+      {{ ocp_cli }} new-project {{ project_name }}
+    register: new_project
+    changed_when: false
+    when: project_name not in projects.stdout_lines
+
+  - name: Pause for project creation
+    pause:
+      seconds: 5
+    when: project_name not in projects.stdout_lines
+
+  - name: Create app
+    shell: |
+      {{ ocp_cli }} new-app {{ runtime }}~{{ app_repo }} --name={{ app_name }} -n {{ project_name }}
+    changed_when: false
+    ignore_errors: true
+    when: project_name not in projects.stdout_lines
+
+  - name: Get build elements when project is already created
+    shell: |
+      {{ ocp_cli }} get bc -l app={{ app_name }} --no-headers=true -n {{ project_name }} | awk '{print $1}'
+    register: elements
+    changed_when: false
+    when: project_name in projects.stdout_lines
+  
+  - name: Start build if elements were already present
+    shell: |
+      {{ ocp_cli }} start-build {{ app_name }} -n {{ project_name}}
+    changed_when: false
+    ignore_errors: true
+    when: (project_name in projects.stdout_lines) and (app_name in elements.stdout_lines)
+
+  - name: Get build version
+    shell: |
+      {{ ocp_cli }} get builds | tail -1 | awk '{print $1}'
+    register: build_version
+    changed_when: false
+
+  - name: Print build version
+    debug:
+      msg: "Build version: {{ build_version.stdout }}"
+
+  - name: Check build completion
+    shell: |
+      {{ ocp_cli }} get builds --no-headers=true -n {{ project_name }} | grep {{build_version.stdout}} | awk '{print $4}' 
+    register: build_result
+    until: "'Complete' in build_result.stdout"
+    retries: 50
+    delay: 5
+    changed_when: false
+
+  - name: Expose app
+    shell: |
+      {{ ocp_cli }} expose svc {{ app_name }} -n {{ project_name }}
+    changed_when: false
+    when: project_name not in projects.stdout_lines
+
+  - name: Wait until pod is running
+    shell: | 
+      {{ ocp_cli }} get pods --no-headers=true -n {{ project_name }} | grep {{build_version.stdout}} | grep -v "deploy" | awk '{print $3}'
+    register: pod_status
+    until: "'Running' in pod_status.stdout"
+    retries: 50
+    delay: 5
+
+  - name: Get route
+    shell: |
+      {{ ocp_cli }} get route -l app={{ app_name}} --no-headers=true -n {{ project_name }} | awk '{print $2}'
+    register: route
+    tags: route
+  
+  - name: Curl route to check the app is up and running
+    uri:
+      url: "http://{{route.stdout}}/api/health"
+      status_code: 200
+    register: route_result
+    until: route_result.status == 200
+    retries: 50
+    delay: 5
+    tags: route
+
+  - name: Print final message
+    debug:
+      msg: "The application has been built and deployed successfully. You can access to it at http://{{route.stdout}}"

@@ -1,3 +1,0 @@
-FROM httpd
-MAINTAINER Red Hat
-EXPOSE 80

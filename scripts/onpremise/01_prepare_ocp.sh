@@ -1,0 +1,1 @@
+ansible-playbook prepare_ocp_deployment.yml
