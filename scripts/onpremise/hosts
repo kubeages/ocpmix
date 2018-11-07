@@ -14,7 +14,6 @@ openshift_release="3.11"
 openshift_web_console_inactivity_timeout_minutes=60
 
 # redhat.registry.io creds
-#oreg_url=registry.access.redhat.com
 oreg_auth_user=YOUR_USER
 oreg_auth_password=YOUR_PWD
 pool_id=YOUR_POOL
