@@ -19,8 +19,8 @@ oreg_auth_password=YOUR_PWD
 pool_id=YOUR_POOL
 
 # Turn on CRI-O Support
-openshift_use_crio=true
-openshift_crio_enable_docker_gc=true
+openshift_use_crio=false
+#openshift_crio_enable_docker_gc=true
 
 # Configure usage of openshift_clock role.
 openshift_clock_enabled=true
@@ -58,6 +58,12 @@ openshift_storage_glusterfs_storageclass_default=true
 openshift_storage_glusterfs_block_deploy=true
 openshift_storage_glusterfs_block_host_vol_size=50
 openshift_storage_glusterfs_block_storageclass=true
+openshift_storage_glusterfs_image=registry.redhat.io/rhgs3/rhgs-server-rhel7:v3.11.1
+openshift_storage_glusterfs_block_image=registry.redhat.io/rhgs3/rhgs-gluster-block-prov-rhel7:v3.11.1
+openshift_storage_glusterfs_heketi_image=registry.redhat.io/rhgs3/rhgs-volmanager-rhel7:v3.11.1
+openshift_storage_glusterfs_registry_image=registry.redhat.io/rhgs3/rhgs-server-rhel7:v3.11.1
+openshift_storage_glusterfs_registry_block_image=registry.redhat.io/rhgs3/rhgs-gluster-block-prov-rhel7:v3.11.1
+openshift_storage_glusterfs_registry_heketi_image=registry.redhat.io/rhgs3/rhgs-volmanager-rhel7:v3.11.1
 
 # Routers
 openshift_hosted_router_replicas=1
